@@ -276,3 +276,20 @@ This lab demonstrated:
 
 Sensitive authentication information such as PostgreSQL passwords, PgBouncer `userlist.txt` credentials, and GitHub tokens must not be committed to this repository.
 
+
+## 6. Backup, Point-in-Time Recovery, and Streaming Replication
+
+### Logical Backup
+
+A logical backup of the PostgreSQL database was created and verified as part of the backup lab.
+
+### WAL Archiving and PITR
+
+PostgreSQL WAL archiving was configured to support Point-in-Time Recovery (PITR).
+
+A base backup was created and a separate standby data directory was prepared for recovery testing.
+
+The recovered PostgreSQL instance was started on port `5433` and verified with:
+
+```sql
+SELECT version(), pg_is_in_recovery();
