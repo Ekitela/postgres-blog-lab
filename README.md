@@ -293,3 +293,104 @@ The recovered PostgreSQL instance was started on port `5433` and verified with:
 
 ```sql
 SELECT version(), pg_is_in_recovery();
+```
+
+The recovery test confirmed that the restored PostgreSQL instance was in recovery mode.
+
+### PITR Verification
+
+The PITR recovery target was:
+
+2026-09-28 10:44:29.101878+03
+
+
+Before the simulated disaster, the `students` table contained 5 rows. The database was restored from the physical base backup and WAL archive to the selected recovery point.
+
+After recovery, the database was promoted and verified with:
+
+SELECT pg_is_in_recovery(), COUNT(*) FROM students;
+
+The final result confirmed:
+
+pg_is_in_recovery | count
+------------------+------
+f                 | 5
+
+### Streaming Replication
+
+A PostgreSQL streaming standby was created from the primary using `pg_basebackup`.
+
+The standby was configured on port `5433`.
+
+The standby was verified with:
+
+SELECT pg_is_in_recovery() AS standby;
+
+The result was:
+
+standby
+-------
+t
+
+This confirmed that the instance on port `5433` was operating as a standby.
+
+
+
+### Live Replication Test
+
+A test record was inserted into the primary:
+
+INSERT INTO students (name, course)
+VALUES ('Final Replication Test', 'Streaming Replication');
+
+The record was successfully retrieved from the standby:
+
+id | name | course
+39 | Final Replication Test | Streaming Replication
+
+This confirmed that changes made on the primary were replicated to the standby.
+
+
+### Replication Health
+
+Replication status on the primary was verified with:
+
+SELECT application_name, client_addr, state, sync_state,
+       pg_size_pretty(pg_wal_lsn_diff(sent_lsn, replay_lsn)) AS lag
+FROM pg_stat_replication;
+
+The result was:
+
+application_name | client_addr | state | sync_state | lag
+walreceiver | 127.0.0.1 | streaming | async | 0 bytes
+
+The standby WAL positions were also verified:
+
+SELECT pg_is_in_recovery() AS standby,
+       pg_last_wal_receive_lsn() AS received_lsn,
+       pg_last_wal_replay_lsn() AS replayed_lsn;
+
+The result was:
+
+standby | received_lsn | replayed_lsn
+t | 0/11000680 | 0/11000680
+
+The matching WAL positions confirmed that all received WAL had been replayed on the standby.
+
+### Backup and Replication Summary
+
+This lab demonstrated:
+
+* Logical PostgreSQL backup using pg_dump
+* Logical backup restoration and verification
+* WAL archiving
+* Physical base backup using pg_basebackup
+* Point-in-Time Recovery (PITR)
+* Recovery to a specified timestamp
+* Promotion of a recovered PostgreSQL instance
+* Streaming replication
+* Primary-to-standby replication testing
+* Replication health monitoring
+* Verification of replication lag
+
+No database passwords, replication passwords, or other sensitive authentication credentials were added to the repository.
