@@ -1,0 +1,45 @@
+Table students {
+  id int [pk, increment]
+  name varchar(100)
+  email varchar(150)
+  phone varchar(30)
+}
+
+Table courses {
+  id int [pk, increment]
+  name varchar(150)
+  code varchar(50)
+  description text
+}
+
+Table enrollments {
+  id int [pk, increment]
+  student_id int [not null, ref: > students.id]
+  course_id int [not null, ref: > courses.id]
+  enrolled_at timestamp
+  status varchar(30)
+}
+
+Table results {
+  id int [pk, increment]
+  enrollment_id int [not null, ref: > enrollments.id]
+  score decimal(5,2)
+  grade varchar(5)
+  recorded_at timestamp
+}
+
+Table users {
+  id int [pk, increment]
+  username varchar(100)
+  role varchar(50)
+}
+
+Table audit_log {
+  id bigint [pk, increment]
+  tbl text
+  op text
+  old_row jsonb
+  new_row jsonb
+  changed_by text
+  at timestamptz
+}
