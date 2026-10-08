@@ -1,4 +1,4 @@
-"""Redis cache-aside example for course data."""
+"""Tenant-aware Redis cache-aside example for course data."""
 
 import json
 import os
@@ -9,15 +9,20 @@ import redis
 
 REDIS_TTL = 300
 
+# Shared Redis client.
+# redis-py manages connections through its internal connection pool.
+redis_client = redis.Redis(
+    host="127.0.0.1",
+    port=6379,
+    decode_responses=True,
+)
 
-def get_course(code):
-    cache_key = f"course:{code}"
 
-    # Connect to Redis
-    r = redis.Redis(host="127.0.0.1", port=6379, decode_responses=True)
+def get_course(tenant_id, code):
+    cache_key = f"course:{tenant_id}:{code}"
 
     # 1. Check Redis first
-    cached = r.get(cache_key)
+    cached = redis_client.get(cache_key)
 
     if cached:
         print("CACHE HIT")
@@ -43,9 +48,10 @@ def get_course(code):
                 """
                 SELECT id, name, code
                 FROM courses
-                WHERE code = %s
+                WHERE tenant_id = %s
+                  AND code = %s
                 """,
-                (code,),
+                (tenant_id, code),
             )
 
             row = cur.fetchone()
@@ -55,16 +61,21 @@ def get_course(code):
 
     course = {
         "id": row[0],
+        "tenant_id": tenant_id,
         "name": row[1],
         "code": row[2],
     }
 
-    # 3. Store the result in Redis for 5 minutes
-    r.set(cache_key, json.dumps(course), ex=REDIS_TTL)
+    # 3. Store the tenant-specific result in Redis for 5 minutes
+    redis_client.set(
+        cache_key,
+        json.dumps(course),
+        ex=REDIS_TTL,
+    )
 
     return course
 
 
 if __name__ == "__main__":
-    course = get_course("PY101")
+    course = get_course(1, "PY101")
     print(course)
